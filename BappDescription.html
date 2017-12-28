@@ -1,0 +1,49 @@
+<p>This extension allows custom scan issues to be added and tracked within Burp. Burp adds issues that it finds from active and passive scans, but does not allow custom issues to be created or tracked. Custom issues can now be created from different tabs within Burp by right clicking and selecting "Add & Track Custom Issue". The recommended place to create a custom issue from, is within the Target tab:</p>
+
+<ul>
+	<li>Select a target to create a custom scan issue for.</li>
+	<li>Right click in the Site Map, Contents, or Issues section to display the context menu.</li>
+	<li>From the context menu, select "Add & Track Custom Issue".</li>
+	<li>Information will automatically be filled in including the protocol, host, port, path, request, and response.</li>
+	<li>The issue name, severity, confidence, issue detail, issue background, remediation detail, and remediation background can then be filled in.</li>
+	<li>The Issue Selection tab allows predefined issues to quickly be selected.</li>
+	<li>If selecting a predefined issue, it is recommended to update the Issue Detail and to add information to the Remediation Detail that relates to the new issue.</li>
+	<li>Once all of the needed information is filled in, click the "Add & Track Custom Issue" button to add the custom issue to the scan issues.</li>
+	<li>Each new issue that is added to the scan issues, will also be added to the issue selection table. This table can be exported to CSV or JSON formats, and can later be imported for future scans.</li>
+	<li>Issues can also be added from the extension's main tab. If there is not an issue selected from the issue table, a new blank issue can be created. If an issue is selected from the issue table, a new issue based off of the selected issue can be created.</li>
+</ul>
+
+<p>Main features include:</p>
+<ul>
+	<li>Add custom scan issues.</li>
+	<li>Track custom scan issues.</li>
+	<li>Delete custom scan issues.</li>
+	<li>Export custom scan issues to CSV and JSON formats for future scans.</li>
+	<li>Import previously created custom scan issues from CSV and JSON formats.</li>
+</ul>
+
+<p>Other features that have been added include:</p>
+
+<ul>
+	<li>If a new issue is added from the menu option, then the protocol, host, port, path, request, and response will be filled in automatically.</li>
+	<li>Warning labels will appear if the scan issues table has been updated since the last export, to help users remember to save their custom scan issues in case they need them for future scans.</li>
+	<li>The tab key transfers focus to the next text field instead of inserting a tab into the text field.</li>
+	<li>Disabled text fields have a darker background color.</li>
+	<li>Press Ctrl+Z to undo an action.</li>
+	<li>Press Ctrl+Shift+Z to redo an action.</li>
+	<li>Press Ctrl+Y to redo an action.</li>
+	<li>The custom issues table can be sorted and unsorted.</li>
+	<li>Rows in the custom issue table can be unselected.</li>
+	<li>If a new issue is created from the extension's main tab, the popup dialog will be cleared if it is not already visible.</li>
+	<li>If the popup dialog is visible, then the issue information will be added and the rest of the panel will not be cleared, since it may contain data that was already entered for the new issue.</li>
+	<li>A red border will be added to any required fields that are left blank when trying to add an issue.</li>
+	<li>The port field has to contain a valid port.</li>
+	<li>The host and path fields cannot contain a space.</li>
+	<li>The issue name field cannot start with a space.</li>
+	<li>Changing the protocol dropdown will set the port for the user, but the port can still be changed manually if needed.</li>
+	<li>If the host field starts with http:// or https:// it will be removed because the protocol dropdown sets the protocol.</li>
+	<li>If the host field ends in a forward slash '/' it will be removed because one is added after the port by default.</li>
+	<li>If the path field does not start with a forward slash '/' one will be added.</li>
+</ul>
+
+<p>This extension requires Burp Suite Professional and Jython standalone.</p>

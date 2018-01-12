@@ -148,7 +148,6 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 		print("Created by James Morris")
 		print("https://github.com/JamesMorris-BurpSuite/")
 
-
 		# end of BurpExtender
 		return
 
@@ -480,7 +479,7 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 		self._dictionaryOfLastSelectedRowsAndColumns[self._DIALOG_TAB_2_NAME + " Column"] = -1
 
 		# create headers for the tables
-		headers = ["Issue Name", "Severity", "Issue Detail", "Issue Background", "Remediation Detail", "Remediation Background"]
+		headers = ["Issue Name", "Severity", "Type", "Issue Detail", "Issue Background", "Remediation Detail", "Remediation Background"]
 
 		# create custom default table model
 		self._tableModelShared = CustomDefaultTableModel(None, headers)
@@ -607,12 +606,13 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 		self._dictionaryOfTables[tabName] = CustomJTable(self, self._tableModelShared, tabName)
 
 		# set preferred column widths for table
-		self._dictionaryOfTables[tabName].getColumnModel().getColumn(0).setPreferredWidth(260)
-		self._dictionaryOfTables[tabName].getColumnModel().getColumn(1).setPreferredWidth(50)
-		self._dictionaryOfTables[tabName].getColumnModel().getColumn(2).setPreferredWidth(210)
-		self._dictionaryOfTables[tabName].getColumnModel().getColumn(3).setPreferredWidth(210)
-		self._dictionaryOfTables[tabName].getColumnModel().getColumn(4).setPreferredWidth(110)
-		self._dictionaryOfTables[tabName].getColumnModel().getColumn(5).setPreferredWidth(210)
+		self._dictionaryOfTables[tabName].getColumnModel().getColumn(0).setPreferredWidth(270)
+		self._dictionaryOfTables[tabName].getColumnModel().getColumn(1).setPreferredWidth(65)
+		self._dictionaryOfTables[tabName].getColumnModel().getColumn(2).setPreferredWidth(55)
+		self._dictionaryOfTables[tabName].getColumnModel().getColumn(3).setPreferredWidth(185)
+		self._dictionaryOfTables[tabName].getColumnModel().getColumn(4).setPreferredWidth(185)
+		self._dictionaryOfTables[tabName].getColumnModel().getColumn(5).setPreferredWidth(110)
+		self._dictionaryOfTables[tabName].getColumnModel().getColumn(6).setPreferredWidth(180)
 
 		# create custom table row sorter that can unsort
 		self._dictionaryOfTableRowSorters[tabName] = CustomTableRowSorter(self._dictionaryOfTables[tabName].getModel())
@@ -1047,10 +1047,10 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 	# add the manually created issue or the imported issue to the issue table model
 	#
 
-	def addIssueToTableModel(self, issueName, severity, issueDetail, issueBackground, remediationDetail, remediationBackground):
+	def addIssueToTableModel(self, issueName, severity, issueType, issueDetail, issueBackground, remediationDetail, remediationBackground):
 
 		# create unique string from new issue
-		newIssue = "0: " + issueName + "1: " + severity + "2: " + issueDetail + "3: " + issueBackground + "4: " + remediationDetail + "5: " + remediationBackground
+		newIssue = "0: " + issueName + "1: " + severity + "3: " + issueDetail + "4: " + issueBackground + "5: " + remediationDetail + "6: " + remediationBackground
 
 		# set a variable to determine if the new issue is already in the table of issues
 		issueNotInTable = True
@@ -1068,6 +1068,12 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 			# loop through each column in the row
 			for column in range(columnCount):
 
+				# check if third column
+				if column == 2:
+
+					# do not include issue type in unique name
+					continue
+
 				# add column to row issue
 				rowIssue += str(column) + ": " + self._tableModelShared.getValueAt(row, column)
 
@@ -1084,7 +1090,7 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 		if issueNotInTable:
 
 			# add new issue to issue table
-			self._tableModelShared.addRow([issueName, severity, issueDetail, issueBackground, remediationDetail, remediationBackground])
+			self._tableModelShared.addRow([issueName, severity, issueType, issueDetail, issueBackground, remediationDetail, remediationBackground])
 
 			# show warning labels that table has been modified since last export
 			self._dictionaryOfLabels[self._MAIN_TAB_NAME + " 1"].setText(self._WARNING_MESSAGE_TABLE_UPDATED)
@@ -1207,7 +1213,7 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 		self._dialogAddIssue.setVisible(False)
 
 		# add issue to the table model
-		self.addIssueToTableModel(issueName, severity, issueDetail, issueBackground, remediationDetail, remediationBackground)
+		self.addIssueToTableModel(issueName, severity, "Custom", issueDetail, issueBackground, remediationDetail, remediationBackground)
 
 		# create html line breaks since the normal line breaks do not carry over
 		issueDetail = issueDetail.replace("\n", "<br>")
@@ -1314,8 +1320,18 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 		# create frame
 		frameImportExportDialogBox = JFrame()
 
+		# try to load the last used directory
+		try:
+			# load the directory for future imports/exports
+			fileChooserDirectory = self._callbacks.loadExtensionSetting("fileChooserDirectory")
+
+		# there is not a last used directory
+		except:
+			# set the last used directory to blank
+			fileChooserDirectory = ""
+
 		# create file chooser
-		fileChooserImportExportDialogBox = JFileChooser()
+		fileChooserImportExportDialogBox = JFileChooser(fileChooserDirectory)
 
 		# set dialog title
 		fileChooserImportExportDialogBox.setDialogTitle(dialogTitle)
@@ -1334,6 +1350,12 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 		
 			# return no path/file selected
 			return False, "No Path/File"
+
+		# get the directory
+		fileChooserDirectory = fileChooserImportExportDialogBox.getCurrentDirectory()
+
+		# store the directory for future imports/exports
+		self._callbacks.saveExtensionSetting("fileChooserDirectory", str(fileChooserDirectory))
 
 		# get absolute path of file
 		fileChosenImportExportDialogBox = fileChooserImportExportDialogBox.getSelectedFile().getAbsolutePath()
@@ -1384,18 +1406,19 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 				# create export variables for each row
 				issueName = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 0)
 				severity = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 1)
-				issueDetails = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 2)
-				issueBackground = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 3)
-				remediationDetails = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 4)
-				remediationBackground = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 5)
+				issueType = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 2)
+				issueDetails = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 3)
+				issueBackground = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 4)
+				remediationDetails = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 5)
+				remediationBackground = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 6)
 
 				# create a row to add
-				csvRow = [issueName, severity, issueDetails, issueBackground, remediationDetails, remediationBackground]
+				csvRow = [issueName, severity, issueType, issueDetails, issueBackground, remediationDetails, remediationBackground]
 
 				# write row to file
 				csvWriter.writerow(csvRow)
 
-		# show warning labels that table has been modified since last export
+		# hide warning labels that table has been modified since last export
 		self._dictionaryOfLabels[self._MAIN_TAB_NAME + " 1"].setText(" ")
 		self._dictionaryOfLabels[self._MAIN_TAB_NAME + " 2"].setText(" ")
 		self._dictionaryOfLabels[self._DIALOG_TAB_2_NAME + " 1"].setText(" ")
@@ -1438,13 +1461,14 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 				# get data from each row
 				issueName = row[0]
 				severity = row[1]
-				issueDetail = row[2]
-				issueBackground = row[3]
-				remediationDetail = row[4]
-				remediationBackground = row[5]
+				issueType = row[2]
+				issueDetail = row[3]
+				issueBackground = row[4]
+				remediationDetail = row[5]
+				remediationBackground = row[6]
 
 				# add issue to the table model
-				self.addIssueToTableModel(issueName, severity, issueDetail, issueBackground, remediationDetail, remediationBackground)
+				self.addIssueToTableModel(issueName, severity, issueType, issueDetail, issueBackground, remediationDetail, remediationBackground)
 
 		# return
 		return
@@ -1489,10 +1513,11 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 				# create temp variables for each row
 				tempJson["Issue Name"] = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 0)
 				tempJson["Severity"] = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 1)
-				tempJson["Issue Details"] = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 2)
-				tempJson["Issue Background"] = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 3)
-				tempJson["Remediation Details"] = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 4)
-				tempJson["Remediation Background"] = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 5)
+				tempJson["Issue Type"] = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 2)
+				tempJson["Issue Details"] = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 3)
+				tempJson["Issue Background"] = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 4)
+				tempJson["Remediation Details"] = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 5)
+				tempJson["Remediation Background"] = self._dictionaryOfTables[self._MAIN_TAB_NAME].getValueAt(i, 6)
 
 				# export issues to json
 				jsonDictionaryIssues["Issues"].append(tempJson)
@@ -1500,7 +1525,7 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 			# write json to file
 			jsonFile.write(json.dumps(jsonDictionaryIssues, ensure_ascii=False, indent=4, sort_keys=False, separators=(",", ": ")))
 
-		# show warning labels that table has been modified since last export
+		# hide warning labels that table has been modified since last export
 		self._dictionaryOfLabels[self._MAIN_TAB_NAME + " 1"].setText(" ")
 		self._dictionaryOfLabels[self._MAIN_TAB_NAME + " 2"].setText(" ")
 		self._dictionaryOfLabels[self._DIALOG_TAB_2_NAME + " 1"].setText(" ")
@@ -1546,13 +1571,14 @@ class BurpExtender(IBurpExtender, ITab, IContextMenuFactory):
 				# get values to create new row in table
 				issueName = tempJson["Issue Name"]
 				severity = tempJson["Severity"]
+				issueType = tempJson["Issue Type"]
 				issueDetail = tempJson["Issue Details"]
 				issueBackground = tempJson["Issue Background"]
 				remediationDetail = tempJson["Remediation Details"]
 				remediationBackground = tempJson["Remediation Background"]
 
 				# add issue to the table model
-				self.addIssueToTableModel(issueName, severity, issueDetail, issueBackground, remediationDetail, remediationBackground)
+				self.addIssueToTableModel(issueName, severity, issueType, issueDetail, issueBackground, remediationDetail, remediationBackground)
 
 		# return
 		return
@@ -2278,10 +2304,10 @@ class CustomJTable(JTable):
 		# get values from selected row
 		selectedIssueName = self.getValueAt(row, 0)
 		selectedSeverity = self.getValueAt(row, 1)
-		selectedIssueDetail = self.getValueAt(row, 2)
-		selectedIssueBackground = self.getValueAt(row, 3)
-		selectedRemediationDetail = self.getValueAt(row, 4)
-		selectedRemediationBackground = self.getValueAt(row, 5)
+		selectedIssueDetail = self.getValueAt(row, 3)
+		selectedIssueBackground = self.getValueAt(row, 4)
+		selectedRemediationDetail = self.getValueAt(row, 5)
+		selectedRemediationBackground = self.getValueAt(row, 6)
 
 		# update text panes
 		self.extender._dictionaryOfTextPanes[self.tabName + " Issue Name"].setText(self.extender._HTML_FOR_TEXT_PANES[0] + selectedIssueName + self.extender._HTML_FOR_TEXT_PANES[1])
@@ -2402,11 +2428,14 @@ class PopulateSharedTableModel():
 		# create a new issue for the table model
 		# tempIssueName = ""
 		# tempSeverity = ""
+		# tempIssueType = ""
 		# tempIssueDetail = ""
 		# tempIssueBackground = ""
 		# tempRemediationDetail = ""
 		# tempRemediationBackground = ""
-		# self._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		# self._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+
+		tempIssueType = "Default"
 
 		tempIssueName = "Cleartext Submission Of Password"
 		tempSeverity = "High"
@@ -2414,7 +2443,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Some applications transmit passwords over unencrypted connections, making them vulnerable to interception. To exploit this vulnerability, an attacker must be suitably positioned to eavesdrop on the victim's network traffic. This scenario typically occurs when a client communicates with the server over an insecure connection such as public Wi-Fi, or a corporate or home network that is shared with a compromised computer. Common defenses such as switched networks are not sufficient to prevent this. An attacker situated in the user's ISP or the application's hosting infrastructure could also perform this attack. Note that an advanced adversary could potentially target any connection made over the Internet's core infrastructure.\n\nVulnerabilities that result in the disclosure of users' passwords can result in compromises that are extremely difficult to investigate due to obscured audit trails. Even if the application itself only handles non-sensitive information, exposing passwords puts users who have re-used their password elsewhere at risk."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Applications should use transport-level encryption (SSL or TLS) to protect all sensitive communications passing between the client and the server. Communications that should be protected include the login mechanism and related functionality, and any functions where sensitive data can be accessed or privileged actions can be performed. These areas should employ their own session handling mechanism, and the session tokens used should never be transmitted over unencrypted communications. If HTTP cookies are used for transmitting session tokens, then the secure flag should be set to prevent transmission over clear-text HTTP."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Cross-Site Scripting (XSS) - DOM-Based"
 		tempSeverity = "High"
@@ -2422,7 +2451,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "DOM-based vulnerabilities arise when a client-side script reads data from a controllable part of the DOM (for example, the URL) and processes this data in an unsafe way.\n\nDOM-based cross-site scripting arises when a script writes controllable data into the HTML document in an unsafe way. An attacker may be able to use the vulnerability to construct a URL that, if visited by another application user, will cause JavaScript code supplied by the attacker to execute within the user's browser in the context of that user's session with the application.\n\nThe attacker-supplied code can perform a wide variety of actions, such as stealing the victim's session token or login credentials, performing arbitrary actions on the victim's behalf, and logging their keystrokes.\n\nUsers can be induced to visit the attacker's crafted URL in various ways, similar to the usual attack delivery vectors for reflected cross-site scripting vulnerabilities.\n\nBurp Suite automatically identifies this issue using static code analysis, which may lead to false positives that are not actually exploitable. The relevant code and execution paths should be reviewed to determine whether this vulnerability is indeed present, or whether mitigations are in place that would prevent exploitation."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "The most effective way to avoid DOM-based cross-site scripting vulnerabilities is not to dynamically write data from any untrusted source into the HTML document. If the desired functionality of the application means that this behavior is unavoidable, then defenses must be implemented within the client-side code to prevent malicious data from introducing script code into the document. In many cases, the relevant data can be validated on a whitelist basis, to allow only content that is known to be safe. In other cases, it will be necessary to sanitize or encode the data. This can be a complex task, and depending on the context that the data is to be inserted may need to involve a combination of JavaScript escaping, HTML encoding, and URL encoding, in the appropriate sequence."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Cross-Site Scripting (XSS) - Reflected"
 		tempSeverity = "High"
@@ -2430,7 +2459,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Reflected cross-site scripting vulnerabilities arise when data is copied from a request and echoed into the application's immediate response in an unsafe way. An attacker can use the vulnerability to construct a request that, if issued by another application user, will cause JavaScript code supplied by the attacker to execute within the user's browser in the context of that user's session with the application.\n\nThe attacker-supplied code can perform a wide variety of actions, such as stealing the victim's session token or login credentials, performing arbitrary actions on the victim's behalf, and logging their keystrokes.\n\nUsers can be induced to issue the attacker's crafted request in various ways. For example, the attacker can send a victim a link containing a malicious URL in an email or instant message. They can submit the link to popular web sites that allow content authoring, for example in blog comments. And they can create an innocuous looking web site that causes anyone viewing it to make arbitrary cross-domain requests to the vulnerable application (using either the GET or the POST method).\n\nThe security impact of cross-site scripting vulnerabilities is dependent upon the nature of the vulnerable application, the kinds of data and functionality that it contains, and the other applications that belong to the same domain and organization. If the application is used only to display non-sensitive public content, with no authentication or access control functionality, then a cross-site scripting flaw may be considered low risk. However, if the same application resides on a domain that can access cookies for other more security-critical applications, then the vulnerability could be used to attack those other applications, and so may be considered high risk. Similarly, if the organization that owns the application is a likely target for phishing attacks, then the vulnerability could be leveraged to lend credibility to such attacks, by injecting Trojan functionality into the vulnerable application and exploiting users' trust in the organization in order to capture credentials for other applications that it owns. In many kinds of application, such as those providing online banking functionality, cross-site scripting should always be considered high risk."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "In most situations where user-controllable data is copied into application responses, cross-site scripting attacks can be prevented using two layers of defenses:\n\nInput should be validated as strictly as possible on arrival, given the kind of content that it is expected to contain. For example, personal names should consist of alphabetical and a small range of typographical characters, and be relatively short; a year of birth should consist of exactly four numerals; email addresses should match a well-defined regular expression. Input which fails the validation should be rejected, not sanitized.\n\nUser input should be HTML-encoded at any point where it is copied into application responses. All HTML metacharacters, including < > \" ' and =, should be replaced with the corresponding HTML entities (&lt; &gt; etc).\n\nIn cases where the application's functionality allows users to author content using a restricted subset of HTML tags and attributes (for example, blog comments which allow limited formatting and linking), it is necessary to parse the supplied HTML to validate that it does not use any dangerous syntax; this is a non-trivial task."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Cross-Site Scripting (XSS) - Stored"
 		tempSeverity = "High"
@@ -2438,7 +2467,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Stored cross-site scripting vulnerabilities arise when user input is stored and later embedded into the application's responses in an unsafe way. An attacker can use the vulnerability to inject malicious JavaScript code into the application, which will execute within the browser of any user who views the relevant application content.\n\nThe attacker-supplied code can perform a wide variety of actions, such as stealing victims' session tokens or login credentials, performing arbitrary actions on their behalf, and logging their keystrokes.\n\nMethods for introducing malicious content include any function where request parameters or headers are processed and stored by the application, and any out-of-band channel whereby data can be introduced into the application's processing space (for example, email messages sent over SMTP that are ultimately rendered within a web mail application).\n\nStored cross-site scripting flaws are typically more serious than reflected vulnerabilities because they do not require a separate delivery mechanism in order to reach target users, and are not hindered by web browsers' XSS filters. Depending on the affected page, ordinary users may be exploited during normal use of the application. In some situations this can be used to create web application worms that spread exponentially and ultimately exploit all active users.\n\nNote that automated detection of stored cross-site scripting vulnerabilities cannot reliably determine whether attacks that are persisted within the application can be accessed by any other user, only by authenticated users, or only by the attacker themselves. You should review the functionality in which the vulnerability appears to determine whether the application's behavior can feasibly be used to compromise other application users."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "In most situations where user-controllable data is copied into application responses, cross-site scripting attacks can be prevented using two layers of defenses:\n\nInput should be validated as strictly as possible on arrival, given the kind of content that it is expected to contain. For example, personal names should consist of alphabetical and a small range of typographical characters, and be relatively short; a year of birth should consist of exactly four numerals; email addresses should match a well-defined regular expression. Input which fails the validation should be rejected, not sanitized.\n\nUser input should be HTML-encoded at any point where it is copied into application responses. All HTML metacharacters, including < > \" ' and =, should be replaced with the corresponding HTML entities (&lt; &gt; etc).\n\nIn cases where the application's functionality allows users to author content using a restricted subset of HTML tags and attributes (for example, blog comments which allow limited formatting and linking), it is necessary to parse the supplied HTML to validate that it does not use any dangerous syntax; this is a non-trivial task."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Directory Traversal (File Path Traversal '../')"
 		tempSeverity = "High"
@@ -2446,7 +2475,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "File path traversal vulnerabilities arise when user-controllable data is used within a filesystem operation in an unsafe manner. Typically, a user-supplied filename is appended to a directory prefix in order to read or write the contents of a file. If vulnerable, an attacker can supply path traversal sequences (using dot-dot-slash characters) to break out of the intended directory and read or write files elsewhere on the filesystem.\n\nThis is typically a very serious vulnerability, enabling an attacker to access sensitive files containing configuration data, passwords, database records, log data, source code, and program scripts and binaries."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Ideally, application functionality should be designed in such a way that user-controllable data does not need to be passed to filesystem operations. This can normally be achieved by referencing known files via an index number rather than their name, and using application-generated filenames to save user-supplied file content.\n\nIf it is considered unavoidable to pass user-controllable data to a filesystem operation, three layers of defense can be employed to prevent path traversal attacks:\n\nUser-controllable data should be strictly validated before being passed to any filesystem operation. In particular, input containing dot-dot sequences should be blocked.\n\nAfter validating user input, the application can use a suitable filesystem API to verify that the file to be accessed is actually located within the base directory used by the application. In Java, this can be achieved by instantiating a java.io.File object using the user-supplied filename and then calling the getCanonicalPath method on this object. If the string returned by this method does not begin with the name of the start directory, then the user has somehow bypassed the application's input filters, and the request should be rejected. In ASP.NET, the same check can be performed by passing the user-supplied filename to the System.Io.Path.GetFullPath method and checking the returned string in the same way as described for Java.\n\nThe directory used to store files that are accessed using user-controllable data can be located on a separate logical volume to other sensitive application and operating system files, so that these cannot be reached via path traversal attacks. In Unix-based systems, this can be achieved using a chrooted filesystem; on Windows, this can be achieved by mounting the base directory as a new logical drive and using the associated drive letter to access its contents."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "File Path Manipulation"
 		tempSeverity = "High"
@@ -2454,7 +2483,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "File path manipulation vulnerabilities arise when user-controllable data is placed into a file or URL path that is used on the server to access local resources, which may be within or outside the web root. If vulnerable, an attacker can modify the file path to access different resources, which may contain sensitive information. Even where an attack is constrained within the web root, it is often possible to retrieve items that are normally protected from direct access, such as application configuration files, the source code for server-executable scripts, or files with extensions that the web server is not configured to serve directly."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Ideally, application functionality should be designed in such a way that user-controllable data does not need to be placed into file or URL paths in order to access local resources on the server. This can normally be achieved by referencing known files via an index number rather than their name.\n\nIf it is considered unavoidable to place user data into file or URL paths, the data should be strictly validated against a whitelist of accepted values. Note that when accessing resources within the web root, simply blocking input containing file path traversal sequences (such as dot-dot-slash) is not always sufficient to prevent retrieval of sensitive information, because some protected items may be accessible at the original path without using any traversal sequences."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "LDAP Injection"
 		tempSeverity = "High"
@@ -2462,7 +2491,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "LDAP injection arises when user-controllable data is copied in an unsafe way into an LDAP query that is performed by the application. If an attacker can inject LDAP metacharacters into the query, then they can interfere with the query's logic. Depending on the function for which the query is used, the attacker may be able to retrieve sensitive data to which they are not authorized, or subvert the application's logic to perform some unauthorized action.\n\nNote that automated difference-based tests for LDAP injection flaws can often be unreliable and are prone to false positive results. Scanner results should be manually reviewed to confirm whether a vulnerability is actually present."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "If possible, applications should avoid copying user-controllable data into LDAP queries. If this is unavoidable, then the data should be strictly validated to prevent LDAP injection attacks. In most situations, it will be appropriate to allow only short alphanumeric strings to be copied into queries, and any other input should be rejected. At a minimum, input containing any LDAP metacharacters should be rejected; characters that should be blocked include ( ) ; , * | & = and whitespace."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "OS Command Injection"
 		tempSeverity = "High"
@@ -2470,7 +2499,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Operating system command injection vulnerabilities arise when an application incorporates user-controllable data into a command that is processed by a shell command interpreter. If the user data is not strictly validated, an attacker can use shell metacharacters to modify the command that is executed, and inject arbitrary further commands that will be executed by the server.\n\nOS command injection vulnerabilities are usually very serious and may lead to compromise of the server hosting the application, or of the application's own data and functionality. It may also be possible to use the server as a platform for attacks against other systems. The exact potential for exploitation depends upon the security context in which the command is executed, and the privileges that this context has regarding sensitive resources on the server."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "If possible, applications should avoid incorporating user-controllable data into operating system commands. In almost every situation, there are safer alternative methods of performing server-level tasks, which cannot be manipulated to perform additional commands than the one intended.\n\nIf it is considered unavoidable to incorporate user-supplied data into operating system commands, the following two layers of defense should be used to prevent attacks:\n\nThe user data should be strictly validated. Ideally, a whitelist of specific accepted values should be used. Otherwise, only short alphanumeric strings should be accepted. Input containing any other data, including any conceivable shell metacharacter or whitespace, should be rejected.\n\nThe application should use command APIs that launch a specific process via its name and command-line parameters, rather than passing a command string to a shell interpreter that supports command chaining and redirection. For example, the Java API Runtime.exec and the ASP.NET API Process.Start do not support shell metacharacters. This defense can mitigate the impact of an attack even in the event that an attacker circumvents the input validation defenses."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Out-Of-Band Resource Load (HTTP)"
 		tempSeverity = "High"
@@ -2478,7 +2507,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Out-of-band resource load arises when it is possible to induce an application to fetch content from an arbitrary external location, and incorporate that content into the application's own response(s). The ability to trigger arbitrary out-of-band resource load does not constitute a vulnerability in its own right, and in some cases might even be the intended behavior of the application. However, in many cases, it can indicate a vulnerability with serious consequences.\n\nThe ability to request and retrieve web content from other systems can allow the application server to be used as a two-way attack proxy. By submitting suitable payloads, an attacker can cause the application server to attack, or retrieve content from, other systems that it can interact with. This may include public third-party systems, internal systems within the same organization, or services available on the local loopback adapter of the application server itself. Depending on the network architecture, this may expose highly vulnerable internal services that are not otherwise accessible to external attackers.\n\nAdditionally, the application's processing of web content that is retrieved from arbitrary URLs exposes some important and non-conventional attack surface. An attacker can deploy a web server that returns malicious content, and then induce the application to retrieve and process that content. This processing might give rise to the types of input-based vulnerabilities that are normally found when unexpected input is submitted directly in requests to the application. The out-of-band attack surface that the application exposes should be thoroughly tested for these types of vulnerabilities."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "You should review the purpose and intended use of the relevant application functionality, and determine whether the ability to trigger arbitrary out-of-band resource load is intended behavior. If so, you should be aware of the types of attacks that can be performed via this behavior and take appropriate measures. These measures might include blocking network access from the application server to other internal systems, and hardening the application server itself to remove any services available on the local loopback adapter. You should also ensure that content retrieved from other systems is processed in a safe manner, with the usual precautions that are applicable when processing input from direct incoming web requests.\n\nIf the ability to trigger arbitrary out-of-band resource load is not intended behavior, then you should implement a whitelist of permitted URLs, and block requests to URLs that do not appear on this whitelist."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "SQL Injection (SQLi)"
 		tempSeverity = "High"
@@ -2486,7 +2515,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "SQL injection vulnerabilities arise when user-controllable data is incorporated into database SQL queries in an unsafe manner. An attacker can supply crafted input to break out of the data context in which their input appears and interfere with the structure of the surrounding query.\n\nA wide range of damaging attacks can often be delivered via SQL injection, including reading or modifying critical application data, interfering with application logic, escalating privileges within the database and taking control of the database server."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "The most effective way to prevent SQL injection attacks is to use parameterized queries (also known as prepared statements) for all database access. This method uses two steps to incorporate potentially tainted data into SQL queries: first, the application specifies the structure of the query, leaving placeholders for each item of user input; second, the application specifies the contents of each placeholder. Because the structure of the query has already been defined in the first step, it is not possible for malformed data in the second step to interfere with the query structure. You should review the documentation for your database and application platform to determine the appropriate APIs which you can use to perform parameterized queries. It is strongly recommended that you parameterize every variable data item that is incorporated into database queries, even if it is not obviously tainted, to prevent oversights occurring and avoid vulnerabilities being introduced by changes elsewhere within the code base of the application.\n\nYou should be aware that some commonly employed and recommended mitigations for SQL injection vulnerabilities are not always effective:\n\nOne common defense is to double up any single quotation marks appearing within user input before incorporating that input into a SQL query. This defense is designed to prevent malformed data from terminating the string into which it is inserted. However, if the data being incorporated into queries is numeric, then the defense may fail, because numeric data may not be encapsulated within quotes, in which case only a space is required to break out of the data context and interfere with the query. Further, in second-order SQL injection attacks, data that has been safely escaped when initially inserted into the database is subsequently read from the database and then passed back to it again. Quotation marks that have been doubled up initially will return to their original form when the data is reused, allowing the defense to be bypassed.\n\nAnother often cited defense is to use stored procedures for database access. While stored procedures can provide security benefits, they are not guaranteed to prevent SQL injection attacks. The same kinds of vulnerabilities that arise within standard dynamic SQL queries can arise if any SQL is dynamically constructed within stored procedures. Further, even if the procedure is sound, SQL injection can arise if the procedure is invoked in an unsafe manner using user-controllable data."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "User Enumeration"
 		tempSeverity = "High"
@@ -2494,7 +2523,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Valid usernames can be identified based on the response of the web application."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "The server should response with a generic message for both valid and invalid usernames."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "XML External Entity Injection (XXE)"
 		tempSeverity = "High"
@@ -2502,7 +2531,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "XML external entity (XXE) injection vulnerabilities arise when applications process user-supplied XML documents without disabling references to external resources. XML parsers typically support external references by default, even though they are rarely required by applications during normal usage.\n\nExternal entities can reference files on the parser's filesystem; exploiting this feature may allow retrieval of arbitrary files, or denial of service by causing the server to read from a file such as /dev/random.\n\nExternal entities can often also reference network resources via the HTTP protocol handler. The ability to send requests to other systems can allow the vulnerable server to be used as an attack proxy. By submitting suitable payloads, an attacker can cause the application server to attack other systems that it can interact with. This may include public third-party systems, internal systems within the same organization, or services available on the local loopback adapter of the application server itself. Depending on the network architecture, this may expose highly vulnerable internal services that are not otherwise accessible to external attackers."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Parsers that are used to process XML from untrusted sources should be configured to disable processing of all external resources. This is usually possible, and will prevent a number of related attacks. You should consult the documentation for your XML parsing library to determine how to achieve this.\n\nXML external entity injection makes use of the DOCTYPE tag to define the injected entity. It may also be possible to disable the DOCTYPE tag or use input validation to block input containing it."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "XPath Injection"
 		tempSeverity = "High"
@@ -2510,7 +2539,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "XPath injection vulnerabilities arise when user-controllable data is incorporated into XPath queries in an unsafe manner. An attacker can supply crafted input to break out of the data context in which their input appears and interfere with the structure of the surrounding query.\n\nDepending on the purpose for which the vulnerable query is being used, an attacker may be able to exploit an XPath injection flaw to read sensitive application data or interfere with application logic."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "User input should be strictly validated before being incorporated into XPath queries. In most cases, it will be appropriate to accept input containing only short alphanumeric strings. At the very least, input containing any XPath metacharacters such as \" ' / @ = * [ ] ( and ) should be rejected."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Cross-Site Request Forgery (CSRF)"
 		tempSeverity = "Medium"
@@ -2518,7 +2547,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Cross-site request forgery (CSRF) vulnerabilities may arise when applications rely solely on HTTP cookies to identify the user that has issued a particular request. Because browsers automatically add cookies to requests regardless of their origin, it may be possible for an attacker to create a malicious web site that forges a cross-domain request to the vulnerable application. For a request to be vulnerable to CSRF, the following conditions must hold:\n\nThe request can be issued cross-domain, for example using an HTML form. If the request contains non-standard headers or body content, then it may only be issuable from a page that originated on the same domain.\n\nThe application relies solely on HTTP cookies or Basic Authentication to identify the user that issued the request. If the application places session-related tokens elsewhere within the request, then it may not be vulnerable.\n\nThe request performs some privileged action within the application, which modifies the application's state based on the identity of the issuing user.\n\nThe attacker can determine all the parameters required to construct a request that performs the action. If the request contains any values that the attacker cannot determine or predict, then it is not vulnerable."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "The most effective way to protect against CSRF vulnerabilities is to include within relevant requests an additional token that is not transmitted in a cookie: for example, a parameter in a hidden form field. This additional token should contain sufficient entropy, and be generated using a cryptographic random number generator, such that it is not feasible for an attacker to determine or predict the value of any token that was issued to another user. The token should be associated with the user's session, and the application should validate that the correct token is received before performing any action resulting from the request.\n\nAn alternative approach, which may be easier to implement, is to validate that Host and Referer headers in relevant requests are both present and contain the same domain name. However, this approach is somewhat less robust: historically, quirks in browsers and plugins have often enabled attackers to forge cross-domain requests that manipulate these headers to bypass such defenses."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "XML Injection"
 		tempSeverity = "Medium"
@@ -2526,7 +2555,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "XML or SOAP injection vulnerabilities arise when user input is inserted into a server-side XML document or SOAP message in an unsafe way. It may be possible to use XML metacharacters to modify the structure of the resulting XML. Depending on the function in which the XML is used, it may be possible to interfere with the application's logic, to perform unauthorized actions or access sensitive data.\n\nThis kind of vulnerability can be difficult to detect and exploit remotely; you should review the application's response, and the purpose that the relevant input performs within the application's functionality, to determine whether it is indeed vulnerable."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "The application should validate or sanitize user input before incorporating it into an XML document or SOAP message. It may be possible to block any input containing XML metacharacters such as < and >. Alternatively, these characters can be replaced with the corresponding entities: &lt; and &gt;."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Link Manipulation"
 		tempSeverity = "Low"
@@ -2534,7 +2563,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Link manipulation occurs when an application embeds user input into the path or domain of URLs that appear within application responses. An attacker can use this vulnerability to construct a link that, if visited by another application user, will modify the target of URLs within the response. It may be possible to leverage this to perform various attacks, such as:\n\nManipulating the path of an on-site link that has sensitive parameters in the URL. If the response from the modified path contains references to off-site resources, then the sensitive data might be leaked to external domains via the Referer header.\n\nManipulating the URL targeted by a form action, making the form submission have unintended side effects.\n\nManipulating the URL used by a CSS import statement to point to an attacker-uploaded file, resulting in CSS injection.\n\nInjecting on-site links containing XSS exploits, thereby bypassing browser anti-XSS defenses, since those defenses typically do not operate on on-site links.\n\nThe security impact of this issue depends largely on the nature of the application functionality. Even if it has no direct impact on its own, an attacker may use it in conjunction with other vulnerabilities to escalate their overall severity."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Consider using a whitelist to restrict user input to safe values. Please note that in some situations this issue will have no security impact, meaning no remediation is necessary."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Open Redirection"
 		tempSeverity = "Low"
@@ -2542,7 +2571,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Open redirection vulnerabilities arise when an application incorporates user-controllable data into the target of a redirection in an unsafe way. An attacker can construct a URL within the application that causes a redirection to an arbitrary external domain. This behavior can be leveraged to facilitate phishing attacks against users of the application. The ability to use an authentic application URL, targeting the correct domain and with a valid SSL certificate (if SSL is used), lends credibility to the phishing attack because many users, even if they verify these features, will not notice the subsequent redirection to a different domain."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "If possible, applications should avoid incorporating user-controllable data into redirection targets. In many cases, this behavior can be avoided in two ways:\n\nRemove the redirection function from the application, and replace links to it with direct links to the relevant target URLs.\n\nMaintain a server-side list of all URLs that are permitted for redirection. Instead of passing the target URL as a parameter to the redirector, pass an index into this list.\n\nIf it is considered unavoidable for the redirection function to receive user-controllable input and incorporate this into the redirection target, one of the following measures should be used to minimize the risk of redirection attacks:\n\nThe application should use relative URLs in all of its redirects, and the redirection function should strictly validate that the URL received is a relative URL.\n\nThe application should use URLs relative to the web root for all of its redirects, and the redirection function should validate that the URL received starts with a slash character. It should then prepend http://yourdomainname.com to the URL before issuing the redirect.\n\nThe application should use absolute URLs for all of its redirects, and the redirection function should verify that the user-supplied URL begins with http://yourdomainname.com/ before issuing the redirect."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Password Submitted Using GET Method"
 		tempSeverity = "Low"
@@ -2550,7 +2579,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Some applications use the GET method to submit passwords, which are transmitted within the query string of the requested URL. Sensitive information within URLs may be logged in various locations, including the user's browser, the web server, and any forward or reverse proxy servers between the two endpoints. URLs may also be displayed on-screen, bookmarked or emailed around by users. They may be disclosed to third parties via the Referer header when any off-site links are followed. Placing passwords into the URL increases the risk that they will be captured by an attacker.\n\nVulnerabilities that result in the disclosure of users' passwords can result in compromises that are extremely difficult to investigate due to obscured audit trails. Even if the application itself only handles non-sensitive information, exposing passwords puts users who have re-used their password elsewhere at risk."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "All forms submitting passwords should use the POST method. To achieve this, applications should specify the method attribute of the FORM tag as method=\"POST\". It may also be necessary to modify the corresponding server-side form handler to ensure that submitted passwords are properly retrieved from the message body, rather than the URL."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Base64-Encoded Data In Parameter"
 		tempSeverity = "Information"
@@ -2558,7 +2587,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Applications sometimes Base64-encode parameters in an attempt to obfuscate them from users or facilitate transport of binary data. The presence of Base64-encoded data may indicate security-sensitive information or functionality that is worthy of further investigation. The data should be reviewed to determine whether it contains any interesting information, or provides any additional entry points for malicious input."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Confirm that the Base64-encoded parameters do not contain sensitive information."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "File Upload Functionality"
 		tempSeverity = "Information"
@@ -2566,7 +2595,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "File upload functionality is commonly associated with a number of vulnerabilities, including:\nFile path traversal\nPersistent cross-site scripting\nPlacing of other client-executable code into the domain\nTransmission of viruses and other malware\nDenial of service\n\nYou should review file upload functionality to understand its purpose, and establish whether uploaded content is ever returned to other application users, either through their normal usage of the application or by being fed a specific link by an attacker.\n\nSome factors to consider when evaluating the security impact of this functionality include:\n\nWhether uploaded content can subsequently be downloaded via a URL within the application.\n\nWhat Content-type and Content-disposition headers the application returns when the file's content is downloaded.\n\nWhether it is possible to place executable HTML/JavaScript into the file, which executes when the file's contents are viewed.\n\nWhether the application performs any filtering on the file extension or MIME type of the uploaded file.\n\nWhether it is possible to construct a hybrid file containing both executable and non-executable content, to bypass any content filters - for example, a file containing both a GIF image and a Java archive (known as a GIFAR file).\n\nWhat location is used to store uploaded content, and whether it is possible to supply a crafted filename to escape from this location.\n\nWhether archive formats such as ZIP are unpacked by the application.\n\nHow the application handles attempts to upload very large files, or decompression bomb files."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "File upload functionality is not straightforward to implement securely. Some recommendations to consider in the design of this functionality include:\n\nUse a server-generated filename if storing uploaded files on disk.\n\nInspect the content of uploaded files, and enforce a whitelist of accepted, non-executable content types. Additionally, enforce a blacklist of common executable formats, to hinder hybrid file attacks.\n\nEnforce a whitelist of accepted, non-executable file extensions.\n\nIf uploaded files are downloaded by users, supply an accurate non-generic Content-Type header, the X-Content-Type-Options: nosniff header, and also a Content-Disposition header that specifies that browsers should handle the file as an attachment.\n\nEnforce a size limit on uploaded files (for defense-in-depth, this can be implemented both within application code and in the web server's configuration).\n\nReject attempts to upload archive formats such as ZIP."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Information Leakage"
 		tempSeverity = "Information"
@@ -2574,7 +2603,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Applications sometimes leak information. This information could contain sensitive data or be used by an attacker to exploit the application."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Applications should not leak information."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Information Leakage (Document Metadata)"
 		tempSeverity = "Information"
@@ -2582,7 +2611,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Documents sometimes leak information in the document metadata. This information can be quite useful to attackers and can be used to perform attacks including password attacks and social engineering attacks."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Documents should not leak information from the document metadata. Remove metadata from documents."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Information Leakage (Improper Error Handling)"
 		tempSeverity = "Information"
@@ -2590,7 +2619,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "Applications sometimes leak information in error messages displayed to end users. These error messages can be quite useful to attackers and may be useful in exploiting a vulnerability."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Applications should not leak information from the error messages."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Input Returned In Response"
 		tempSeverity = "Information"
@@ -2598,7 +2627,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "User input was echoed into the application's response.\n\nInput being returned in application responses is not a vulnerability in its own right. However, it is a prerequisite for many client-side vulnerabilities, including cross-site scripting, open redirection, content spoofing, and response header injection. Additionally, some server-side vulnerabilities such as SQL injection are often easier to identify and exploit when input is returned in responses. In applications where input retrieval is rare and the environment is resistant to automated testing (for example, due to a web application firewall), it might be worth subjecting instances of it to focused manual testing."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Confirm that the input that was echoed cannot be used by an attacker to exploit a vulnerability."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Interesting Parameter Passed To Web Page"
 		tempSeverity = "Information"
@@ -2606,7 +2635,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "An interesting parameter was passed to a web page."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Confirm that the parameter passed to the web page is by design and cannot be used to exploit a vulnerability."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Long Redirection Response"
 		tempSeverity = "Information"
@@ -2614,7 +2643,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "The application returned a redirection response containing a \"long\" message body. Ordinarily, this content is not displayed to the user, because the browser automatically follows the redirection.\n\nOccasionally, redirection responses contain sensitive data. For example, if the user requests a page that they are not authorized to view, then an application might issue a redirection to a different page, but also include the contents of the prohibited page.\n\nYou should review the contents of the response to determine whether it contains anything sensitive."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "In cases where the application handles requests for unauthorized content by redirecting to a different URL, the application should ensure that no sensitive content is included within the redirection response. Depending on the application and the platform, this might involve checking for proper authorization earlier in the request handling logic, or using a different API to perform the redirection."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Open Ports"
 		tempSeverity = "Information"
@@ -2622,7 +2651,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "The open ports were discovered by ENTER_DISCOVERY_METHOD_HERE"
 		tempRemediationDetail = ""
 		tempRemediationBackground = "Confirm that the port(s) listed should be open."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Robots.txt File Output"
 		tempSeverity = "Information"
@@ -2630,7 +2659,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "The file robots.txt is used to give instructions to web robots, such as search engine crawlers, about locations within the web site that robots are allowed, or not allowed, to crawl and index.\n\nThe presence of the robots.txt does not in itself present any kind of security vulnerability. However, it is often used to identify restricted or private areas of a site's contents. The information in the file may therefore help an attacker to map out the site's contents, especially if some of the locations identified are not linked from elsewhere in the site. If the application relies on robots.txt to protect access to these areas, and does not enforce proper access control over them, then this presents a serious vulnerability."
 		tempRemediationDetail = ""
 		tempRemediationBackground = "The robots.txt file is not itself a security threat, and its correct use can represent good practice for non-security reasons. You should not assume that all web robots will honor the file's instructions. Rather, assume that attackers will pay close attention to any locations identified in the file. Do not rely on robots.txt to provide any kind of protection over unauthorized access."
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "DirBuster Results"
 		tempSeverity = "Information"
@@ -2638,7 +2667,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "The command used was: ENTER_DIRBUSTER_COMMAND_USED_HERE"
 		tempRemediationDetail = ""
 		tempRemediationBackground = ""
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "DotDotPwn Results"
 		tempSeverity = "Information"
@@ -2646,7 +2675,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "The command used was: ENTER_DOTDOTPWN_COMMAND_USED_HERE"
 		tempRemediationDetail = ""
 		tempRemediationBackground = ""
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Nikto Results"
 		tempSeverity = "Information"
@@ -2654,7 +2683,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "The command used was: ENTER_NIKTO_COMMAND_USED_HERE"
 		tempRemediationDetail = ""
 		tempRemediationBackground = ""
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Nmap Results"
 		tempSeverity = "Information"
@@ -2662,7 +2691,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "The command used was: ENTER_NMAP_COMMAND_USED_HERE"
 		tempRemediationDetail = ""
 		tempRemediationBackground = ""
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "SQLMap Results"
 		tempSeverity = "Information"
@@ -2670,7 +2699,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "The command used was: ENTER_SQLMAP_COMMAND_USED_HERE"
 		tempRemediationDetail = ""
 		tempRemediationBackground = ""
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		tempIssueName = "Wfuzz Results"
 		tempSeverity = "Information"
@@ -2678,7 +2707,7 @@ class PopulateSharedTableModel():
 		tempIssueBackground = "The command used was: ENTER_WFUZZ_COMMAND_USED_HERE"
 		tempRemediationDetail = ""
 		tempRemediationBackground = ""
-		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
+		self.extender._tableModelShared.addRow([tempIssueName, tempSeverity, tempIssueType, tempIssueDetail, tempIssueBackground, tempRemediationDetail, tempRemediationBackground])
 
 		return
 
